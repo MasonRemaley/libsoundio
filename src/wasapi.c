@@ -14,6 +14,7 @@
 #define COBJMACROS
 #define CONST_VTABLE
 #include <initguid.h>
+#include <inttypes.h>
 #include <audioclient.h>
 #include <endpointvolume.h>
 #include <mmdeviceapi.h>
@@ -1424,7 +1425,8 @@ static void outstream_shared_run(struct SoundIoOutStreamPrivate *os) {
         return;
     }
     LOG_INFO("get frame count min");
-    LOG_INFO("frames_used: %i", frames_used);
+    LOG_INFO("frames_used: %"PRIu32"", frames_used);
+    LOG_INFO("frames_used casted: %i", (int)frames_used);
     LOG_INFO("osw: %p", osw);
     LOG_INFO("osw->min_padding_frames: %i", osw->min_padding_frames);
 
