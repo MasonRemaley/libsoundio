@@ -1249,6 +1249,7 @@ static void outstream_destroy_wasapi(struct SoundIoPrivate *si, struct SoundIoOu
 
 static int outstream_do_open(struct SoundIoPrivate *si, struct SoundIoOutStreamPrivate *os) {
     struct SoundIoOutStreamWasapi *osw = &os->backend_data.wasapi;
+    LOG_INFO("do open, osw is %p", osw);
     struct SoundIoOutStream *outstream = &os->pub;
     struct SoundIoDevice *device = outstream->device;
     struct SoundIoDevicePrivate *dev = (struct SoundIoDevicePrivate *)device;
@@ -1423,7 +1424,12 @@ static void outstream_shared_run(struct SoundIoOutStreamPrivate *os) {
         return;
     }
     LOG_INFO("get frame count min");
+    LOG_INFO("frames_used: %i", frames_used);
+    LOG_INFO("osw: %p", osw);
+    LOG_INFO("osw->min_padding_frames: %i", osw->min_padding_frames);
+
     int frame_count_min = soundio_int_max(0, (int)osw->min_padding_frames - (int)frames_used);
+    LOG_INFO("result: %i", frame_count_min);
     LOG_INFO("call write callback");
     outstream->write_callback(outstream, frame_count_min, writable_frame_count);
     LOG_INFO("done");
@@ -1552,6 +1558,7 @@ static void outstream_thread_run(void *arg) {
     LOG_INFO("outstream_thread_run");
     struct SoundIoOutStreamPrivate *os = (struct SoundIoOutStreamPrivate *)arg;
     struct SoundIoOutStreamWasapi *osw = &os->backend_data.wasapi;
+    LOG_INFO("osw in thread run is %p", osw);
     struct SoundIoOutStream *outstream = &os->pub;
     struct SoundIoDevice *device = outstream->device;
     struct SoundIo *soundio = device->soundio;
@@ -1606,6 +1613,7 @@ static void outstream_thread_run(void *arg) {
 static int outstream_open_wasapi(struct SoundIoPrivate *si, struct SoundIoOutStreamPrivate *os) {
     LOG_INFO("outstream_open_wasapi");
     struct SoundIoOutStreamWasapi *osw = &os->backend_data.wasapi;
+    LOG_INFO("open outstream osw is: %p", osw);
     struct SoundIoOutStream *outstream = &os->pub;
     struct SoundIoDevice *device = outstream->device;
     struct SoundIo *soundio = &si->pub;
@@ -1655,6 +1663,8 @@ static int outstream_open_wasapi(struct SoundIoPrivate *si, struct SoundIoOutStr
     SOUNDIO_ATOMIC_FLAG_TEST_AND_SET(osw->thread_exit_flag);
     int err;
     LOG_INFO("create thread");
+    LOG_INFO("os is %p");
+    LOG_INFO("osw is %p", osw);
     if ((err = soundio_os_thread_create(outstream_thread_run, os,
                     soundio->emit_rtprio_warning, &osw->thread)))
     {

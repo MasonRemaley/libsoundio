@@ -9,19 +9,13 @@
 #define SOUNDIO_SOUNDIO_H
 
 #include <stdint.h>
-void rust_log(
-    const char *file,
-    uint32_t line,
-    const char *message
-);
-#define LOG_INFO(message) sio_rust_log(__FILE__, __LINE__, message)
+#include <stdio.h>
+#include <stdarg.h>
+#include <stdlib.h>
 
-// typedef void (*rust_log_cb)(const char*, c_uint32_t, const char*);
-// rust_log_cb rust_log;
-// void set_rust_log(rust_log_cb cb) {
-//     rust_log = cb;
-// }
-
+void sio_rust_log(const char *, uint32_t, const char *);
+void sio_rust_log_formatted(const char *file, uint32_t line, char* fmt, ...);
+#define LOG_INFO(message, ...) sio_rust_log_formatted(__FILE__, __LINE__, message, __VA_ARGS__)
 
 #include "endian.h"
 #include <stdbool.h>

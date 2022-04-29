@@ -70,6 +70,20 @@ static backend_init_t backend_init_fns[] = {
     &soundio_dummy_init,
 };
 
+void sio_rust_log_formatted(const char *file, uint32_t line, char* fmt, ...) {
+    char buf[512]; // fixed size for now...
+    va_list vl;
+    va_start(vl, fmt);
+
+    if (vsnprintf( buf, sizeof( buf), fmt, vl) < 0) {
+        abort();
+    }
+
+    va_end( vl);
+
+    sio_rust_log(file, line, buf);
+}
+
 SOUNDIO_MAKE_LIST_DEF(struct SoundIoDevice*, SoundIoListDevicePtr, SOUNDIO_LIST_NOT_STATIC)
 SOUNDIO_MAKE_LIST_DEF(struct SoundIoSampleRateRange, SoundIoListSampleRateRange, SOUNDIO_LIST_NOT_STATIC)
 
@@ -472,6 +486,8 @@ struct SoundIoOutStream *soundio_outstream_create(struct SoundIoDevice *device) 
     if (!device)
         return NULL;
 
+    LOG_INFO("soundio_outstream_create: osw: %p", &os->backend_data.wasapi);
+
     outstream->device = device;
     soundio_device_ref(device);
 
@@ -483,6 +499,7 @@ struct SoundIoOutStream *soundio_outstream_create(struct SoundIoDevice *device) 
 
 int soundio_outstream_open(struct SoundIoOutStream *outstream) {
     LOG_INFO("soundio_outstream_open");
+    LOG_INFO("osw is %p", &((struct SoundIoOutStreamPrivate *)outstream)->backend_data.wasapi);
     struct SoundIoDevice *device = outstream->device;
 
     LOG_INFO("checking codes");
@@ -522,7 +539,7 @@ int soundio_outstream_open(struct SoundIoOutStream *outstream) {
     LOG_INFO("almost ready to call wasapi");
     struct SoundIo *soundio = device->soundio;
     struct SoundIoPrivate *si = (struct SoundIoPrivate *)soundio;
-    LOG_INFO("return si->outstream_open(si, os);");
+    LOG_INFO("return si->outstream_open(si, %p);", os);
     return si->outstream_open(si, os);
 }
 
