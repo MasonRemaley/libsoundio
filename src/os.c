@@ -15,6 +15,7 @@
 #include "os.h"
 #include "soundio_internal.h"
 #include "util.h"
+#include "../soundio/soundio.h"
 
 #include <stdlib.h>
 #include <time.h>
@@ -165,11 +166,17 @@ double soundio_os_get_time(void) {
 
 #if defined(SOUNDIO_OS_WINDOWS)
 static DWORD WINAPI run_win32_thread(LPVOID userdata) {
+    LOG_INFO("run_win32_thread");
     struct SoundIoOsThread *thread = (struct SoundIoOsThread *)userdata;
+    LOG_INFO("coinit");
     HRESULT err = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
+    LOG_INFO("assert");
     assert(err == S_OK);
+    LOG_INFO("run it");
     thread->run(thread->arg);
+    LOG_INFO("couninit");
     CoUninitialize();
+    LOG_INFO("return");
     return 0;
 }
 #else
@@ -189,25 +196,33 @@ int soundio_os_thread_create(
         void (*emit_rtprio_warning)(void),
         struct SoundIoOsThread ** out_thread)
 {
+    LOG_INFO("soundio_os_thread_create");
     *out_thread = NULL;
 
+    LOG_INFO("allocatae");
     struct SoundIoOsThread *thread = ALLOCATE(struct SoundIoOsThread, 1);
     if (!thread) {
+        LOG_INFO("failed, destroy");
         soundio_os_thread_destroy(thread);
         return SoundIoErrorNoMem;
     }
 
+    LOG_INFO("set run and arg");
     thread->run = run;
     thread->arg = arg;
 
 #if defined(SOUNDIO_OS_WINDOWS)
+    LOG_INFO("create thread");
     thread->handle = CreateThread(NULL, 0, run_win32_thread, thread, 0, &thread->id);
     if (!thread->handle) {
+        LOG_INFO("failed, destroy");
         soundio_os_thread_destroy(thread);
         return SoundIoErrorSystemResources;
     }
     if (emit_rtprio_warning) {
+        LOG_INFO("emit warning?");
         if (!SetThreadPriority(thread->handle, THREAD_PRIORITY_TIME_CRITICAL)) {
+            LOG_INFO("emit warning");
             emit_rtprio_warning();
         }
     }
@@ -253,7 +268,9 @@ int soundio_os_thread_create(
     thread->running = true;
 #endif
 
+    LOG_INFO("set out thread");
     *out_thread = thread;
+    LOG_INFO("done");
     return 0;
 }
 

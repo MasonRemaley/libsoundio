@@ -1135,6 +1135,7 @@ static void device_thread_run(void *arg) {
 }
 
 static void my_flush_events(struct SoundIoPrivate *si, bool wait) {
+    LOG_INFO("my_flush_events");
     struct SoundIo *soundio = &si->pub;
     struct SoundIoWasapi *siw = &si->backend_data.wasapi;
 
@@ -1162,10 +1163,13 @@ static void my_flush_events(struct SoundIoPrivate *si, bool wait) {
 
     soundio_os_mutex_unlock(siw->mutex);
 
-    if (cb_shutdown)
+    if (cb_shutdown) {
+        LOG_INFO("soundio->on_backend_disconnect");
         soundio->on_backend_disconnect(soundio, siw->shutdown_err);
-    else if (change)
+    } else if (change) {
+        LOG_INFO("soundio->on_devices_change");
         soundio->on_devices_change(soundio);
+    }
 
     soundio_destroy_devices_info(old_devices_info);
 }
@@ -1398,58 +1402,85 @@ static int outstream_do_open(struct SoundIoPrivate *si, struct SoundIoOutStreamP
 }
 
 static void outstream_shared_run(struct SoundIoOutStreamPrivate *os) {
+    LOG_INFO("outstream_shared_run");
     struct SoundIoOutStreamWasapi *osw = &os->backend_data.wasapi;
     struct SoundIoOutStream *outstream = &os->pub;
 
     HRESULT hr;
 
+    LOG_INFO("get current padding");
     UINT32 frames_used;
     if (FAILED(hr = IAudioClient_GetCurrentPadding(osw->audio_client, &frames_used))) {
+        LOG_INFO("err");
         outstream->error_callback(outstream, SoundIoErrorStreaming);
         return;
     }
+    LOG_INFO("get writable frame count");
     int writable_frame_count = osw->buffer_frame_count - frames_used;
     if (writable_frame_count <= 0) {
+        LOG_INFO("error");
         outstream->error_callback(outstream, SoundIoErrorStreaming);
         return;
     }
+    LOG_INFO("get frame count min");
     int frame_count_min = soundio_int_max(0, (int)osw->min_padding_frames - (int)frames_used);
+    LOG_INFO("call write callback");
     outstream->write_callback(outstream, frame_count_min, writable_frame_count);
+    LOG_INFO("done");
 
+    LOG_INFO("IAudioClient_Start");
     if (FAILED(hr = IAudioClient_Start(osw->audio_client))) {
+        LOG_INFO("error");
         outstream->error_callback(outstream, SoundIoErrorStreaming);
         return;
     }
 
+    LOG_INFO("loop");
     for (;;) {
-        if (!SOUNDIO_ATOMIC_FLAG_TEST_AND_SET(osw->thread_exit_flag))
+        LOG_INFO("test and set thread exit");
+        if (!SOUNDIO_ATOMIC_FLAG_TEST_AND_SET(osw->thread_exit_flag)) {
+            LOG_INFO("return");
             return;
+        }
+        LOG_INFO("test and set clear buffer");
         bool reset_buffer = false;
         if (!SOUNDIO_ATOMIC_FLAG_TEST_AND_SET(osw->clear_buffer_flag)) {
+            LOG_INFO("check paused");
             if (!osw->is_paused) {
+                LOG_INFO("paused");
                 if (FAILED(hr = IAudioClient_Stop(osw->audio_client))) {
+                    LOG_INFO("error");
                     outstream->error_callback(outstream, SoundIoErrorStreaming);
                     return;
                 }
                 osw->is_paused = true;
             }
+            LOG_INFO("reset");
             if (FAILED(hr = IAudioClient_Reset(osw->audio_client))) {
+                LOG_INFO("error");
                 outstream->error_callback(outstream, SoundIoErrorStreaming);
                 return;
             }
+            LOG_INFO("clear pause resume");
             SOUNDIO_ATOMIC_FLAG_CLEAR(osw->pause_resume_flag);
             reset_buffer = true;
         }
+        LOG_INFO("test and set pause resume");
         if (!SOUNDIO_ATOMIC_FLAG_TEST_AND_SET(osw->pause_resume_flag)) {
+            LOG_INFO("load");
             bool pause = SOUNDIO_ATOMIC_LOAD(osw->desired_pause_state);
             if (pause && !osw->is_paused) {
+                LOG_INFO("stop");
                 if (FAILED(hr = IAudioClient_Stop(osw->audio_client))) {
+                    LOG_INFO("error");
                     outstream->error_callback(outstream, SoundIoErrorStreaming);
                     return;
                 }
                 osw->is_paused = true;
             } else if (!pause && osw->is_paused) {
+                LOG_INFO("start");
                 if (FAILED(hr = IAudioClient_Start(osw->audio_client))) {
+                    LOG_INFO("error");
                     outstream->error_callback(outstream, SoundIoErrorStreaming);
                     return;
                 }
@@ -1457,16 +1488,24 @@ static void outstream_shared_run(struct SoundIoOutStreamPrivate *os) {
             }
         }
 
+        LOG_INFO("get current padding");
         if (FAILED(hr = IAudioClient_GetCurrentPadding(osw->audio_client, &frames_used))) {
+            LOG_INFO("error");
             outstream->error_callback(outstream, SoundIoErrorStreaming);
             return;
         }
+        LOG_INFO("calc writable");
         int writable_frame_count = osw->buffer_frame_count - frames_used;
         if (writable_frame_count > 0) {
-            if (frames_used == 0 && !reset_buffer)
+            if (frames_used == 0 && !reset_buffer) {
+                LOG_INFO("underflow");
                 outstream->underflow_callback(outstream);
+            }
+            LOG_INFO("calc min");
             int frame_count_min = soundio_int_max(0, (int)osw->min_padding_frames - (int)frames_used);
+            LOG_INFO("write callback");
             outstream->write_callback(outstream, frame_count_min, writable_frame_count);
+            LOG_INFO("callback returned");
         }
     }
 }
@@ -1510,6 +1549,7 @@ static void outstream_raw_run(struct SoundIoOutStreamPrivate *os) {
 }
 
 static void outstream_thread_run(void *arg) {
+    LOG_INFO("outstream_thread_run");
     struct SoundIoOutStreamPrivate *os = (struct SoundIoOutStreamPrivate *)arg;
     struct SoundIoOutStreamWasapi *osw = &os->backend_data.wasapi;
     struct SoundIoOutStream *outstream = &os->pub;
@@ -1517,8 +1557,10 @@ static void outstream_thread_run(void *arg) {
     struct SoundIo *soundio = device->soundio;
     struct SoundIoPrivate *si = (struct SoundIoPrivate *)soundio;
 
+    LOG_INFO("call do open");
     int err;
     if ((err = outstream_do_open(si, os))) {
+        LOG_INFO("err, deinit");
         outstream_thread_deinit(si, os);
 
         soundio_os_mutex_lock(osw->mutex);
@@ -1529,9 +1571,13 @@ static void outstream_thread_run(void *arg) {
         return;
     }
 
+    LOG_INFO("mutex lock");
     soundio_os_mutex_lock(osw->mutex);
+    LOG_INFO("open complete");
     osw->open_complete = true;
+    LOG_INFO("cond signal");
     soundio_os_cond_signal(osw->cond, osw->mutex);
+    LOG_INFO("wait for start");
     for (;;) {
         if (!SOUNDIO_ATOMIC_FLAG_TEST_AND_SET(osw->thread_exit_flag)) {
             soundio_os_mutex_unlock(osw->mutex);
@@ -1544,23 +1590,31 @@ static void outstream_thread_run(void *arg) {
         soundio_os_cond_wait(osw->start_cond, osw->mutex);
     }
 
-    if (osw->is_raw)
+    LOG_INFO("check if raw");
+    if (osw->is_raw) {
+        LOG_INFO("raw");
         outstream_raw_run(os);
-    else
+    } else {
+        LOG_INFO("shared");
         outstream_shared_run(os);
+    }
 
+    LOG_INFO("deinit");
     outstream_thread_deinit(si, os);
 }
 
 static int outstream_open_wasapi(struct SoundIoPrivate *si, struct SoundIoOutStreamPrivate *os) {
+    LOG_INFO("outstream_open_wasapi");
     struct SoundIoOutStreamWasapi *osw = &os->backend_data.wasapi;
     struct SoundIoOutStream *outstream = &os->pub;
     struct SoundIoDevice *device = outstream->device;
     struct SoundIo *soundio = &si->pub;
 
+    LOG_INFO("atomics");
     SOUNDIO_ATOMIC_FLAG_TEST_AND_SET(osw->pause_resume_flag);
     SOUNDIO_ATOMIC_FLAG_TEST_AND_SET(osw->clear_buffer_flag);
     SOUNDIO_ATOMIC_STORE(osw->desired_pause_state, false);
+    LOG_INFO("atomics done");
 
     // All the COM functions are supposed to be called from the same thread. libsoundio API does not
     // restrict the calling thread context in this way. Furthermore, the user might have called
@@ -1569,48 +1623,61 @@ static int outstream_open_wasapi(struct SoundIoPrivate *si, struct SoundIoOutStr
     // via conditions and signals. The thread for initialization and teardown is also used
     // for the realtime code calls the user write_callback.
 
+    LOG_INFO("is raw stuff");
     osw->is_raw = device->is_raw;
 
+    LOG_INFO("cond create");
     if (!(osw->cond = soundio_os_cond_create())) {
         outstream_destroy_wasapi(si, os);
         return SoundIoErrorNoMem;
     }
 
+    LOG_INFO("start cond create");
     if (!(osw->start_cond = soundio_os_cond_create())) {
         outstream_destroy_wasapi(si, os);
         return SoundIoErrorNoMem;
     }
 
+    LOG_INFO("mutex create");
     if (!(osw->mutex = soundio_os_mutex_create())) {
         outstream_destroy_wasapi(si, os);
         return SoundIoErrorNoMem;
     }
 
+    LOG_INFO("event create");
     osw->h_event = CreateEvent(NULL, FALSE, FALSE, NULL);
     if (!osw->h_event) {
         outstream_destroy_wasapi(si, os);
         return SoundIoErrorOpeningDevice;
     }
 
+    LOG_INFO("thread exit flag test and set");
     SOUNDIO_ATOMIC_FLAG_TEST_AND_SET(osw->thread_exit_flag);
     int err;
+    LOG_INFO("create thread");
     if ((err = soundio_os_thread_create(outstream_thread_run, os,
                     soundio->emit_rtprio_warning, &osw->thread)))
     {
+        LOG_INFO("failed to create thread");
         outstream_destroy_wasapi(si, os);
         return err;
     }
 
+    LOG_INFO("mutex lock");
     soundio_os_mutex_lock(osw->mutex);
     while (!osw->open_complete)
         soundio_os_cond_wait(osw->cond, osw->mutex);
+    LOG_INFO("mutex unlock");
     soundio_os_mutex_unlock(osw->mutex);
 
+    LOG_INFO("check open err");
     if (osw->open_err) {
+        LOG_INFO("error, destroy it");
         outstream_destroy_wasapi(si, os);
         return osw->open_err;
     }
 
+    LOG_INFO("success!");
     return 0;
 }
 
