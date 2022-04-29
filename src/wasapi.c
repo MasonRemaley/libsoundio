@@ -1428,7 +1428,18 @@ static void outstream_shared_run(struct SoundIoOutStreamPrivate *os) {
     LOG_INFO("osw: %p", osw);
     LOG_INFO("osw->min_padding_frames: %i", osw->min_padding_frames);
 
+    LOG_INFO("calc test result 1");
+    int test_result = soundio_int_max(0, 0);
+    LOG_INFO("test_result: %i", test_result);
+    LOG_INFO("calc test result 2");
+    int test_result2 = soundio_int_max(0, (int)frames_used);
+    LOG_INFO("test_result: %i", test_result2);
+    LOG_INFO("calc test result 3");
+    int test_result3 = soundio_int_max(0, (int)osw->min_padding_frames);
+    LOG_INFO("test_result: %i", test_result3);
+
     int frame_count_min = soundio_int_max(0, (int)osw->min_padding_frames - (int)frames_used);
+
     LOG_INFO("result: %i", frame_count_min);
     LOG_INFO("call write callback");
     outstream->write_callback(outstream, frame_count_min, writable_frame_count);
