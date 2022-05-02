@@ -486,7 +486,7 @@ struct SoundIoOutStream *soundio_outstream_create(struct SoundIoDevice *device) 
     if (!device)
         return NULL;
 
-    LOG_INFO("soundio_outstream_create: osw: %p", &os->backend_data.wasapi);
+    LOG_TRACE("soundio_outstream_create: osw: %p", &os->backend_data.wasapi);
 
     outstream->device = device;
     soundio_device_ref(device);
@@ -498,11 +498,11 @@ struct SoundIoOutStream *soundio_outstream_create(struct SoundIoDevice *device) 
 }
 
 int soundio_outstream_open(struct SoundIoOutStream *outstream) {
-    LOG_INFO("soundio_outstream_open");
-    LOG_INFO("osw is %p", &((struct SoundIoOutStreamPrivate *)outstream)->backend_data.wasapi);
+    LOG_TRACE("soundio_outstream_open");
+    LOG_TRACE("osw is %p", &((struct SoundIoOutStreamPrivate *)outstream)->backend_data.wasapi);
     struct SoundIoDevice *device = outstream->device;
 
-    LOG_INFO("checking codes");
+    LOG_TRACE("checking codes");
     if (device->aim != SoundIoDeviceAimOutput)
         return SoundIoErrorInvalid;
 
@@ -512,7 +512,7 @@ int soundio_outstream_open(struct SoundIoOutStream *outstream) {
     if (outstream->layout.channel_count > SOUNDIO_MAX_CHANNELS)
         return SoundIoErrorInvalid;
 
-    LOG_INFO("checking format support");
+    LOG_TRACE("checking format support");
     if (outstream->format == SoundIoFormatInvalid) {
         outstream->format = soundio_device_supports_format(device, SoundIoFormatFloat32NE) ?
             SoundIoFormatFloat32NE : device->formats[0];
@@ -521,25 +521,25 @@ int soundio_outstream_open(struct SoundIoOutStream *outstream) {
     if (outstream->format <= SoundIoFormatInvalid)
         return SoundIoErrorInvalid;
 
-    LOG_INFO("checking layout");
+    LOG_TRACE("checking layout");
     if (!outstream->layout.channel_count) {
         const struct SoundIoChannelLayout *stereo = soundio_channel_layout_get_builtin(SoundIoChannelLayoutIdStereo);
         outstream->layout = soundio_device_supports_layout(device, stereo) ? *stereo : device->layouts[0];
     }
 
-    LOG_INFO("checking sample rate");
+    LOG_TRACE("checking sample rate");
     if (!outstream->sample_rate)
         outstream->sample_rate = soundio_device_nearest_sample_rate(device, 48000);
 
-    LOG_INFO("checking bytes per frame/sample");
+    LOG_TRACE("checking bytes per frame/sample");
     struct SoundIoOutStreamPrivate *os = (struct SoundIoOutStreamPrivate *)outstream;
     outstream->bytes_per_frame = soundio_get_bytes_per_frame(outstream->format, outstream->layout.channel_count);
     outstream->bytes_per_sample = soundio_get_bytes_per_sample(outstream->format);
 
-    LOG_INFO("almost ready to call wasapi");
+    LOG_TRACE("almost ready to call wasapi");
     struct SoundIo *soundio = device->soundio;
     struct SoundIoPrivate *si = (struct SoundIoPrivate *)soundio;
-    LOG_INFO("return si->outstream_open(si, %p);", os);
+    LOG_TRACE("return si->outstream_open(si, %p);", os);
     return si->outstream_open(si, os);
 }
 

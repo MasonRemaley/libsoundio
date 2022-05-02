@@ -15,7 +15,7 @@
 
 void sio_rust_log(const char *, uint32_t, const char *);
 void sio_rust_log_formatted(const char *file, uint32_t line, char* fmt, ...);
-#define LOG_INFO(message, ...) sio_rust_log_formatted(__FILE__, __LINE__, message, __VA_ARGS__)
+#define LOG_TRACE(message, ...) sio_rust_log_formatted(__FILE__, __LINE__, message, __VA_ARGS__)
 
 #include "endian.h"
 #include <stdbool.h>
