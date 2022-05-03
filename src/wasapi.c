@@ -1433,6 +1433,14 @@ static void outstream_shared_run(struct SoundIoOutStreamPrivate *os) {
     LOG_TRACE("calc test result 1");
     int test_result = soundio_int_max(0, 0);
     LOG_TRACE("test_result: %i", test_result);
+    LOG_TRACE("calc test result 1.1");
+    int temp = 0;
+    int test_result1 = soundio_int_max(0, temp);
+    LOG_TRACE("calc test result 1.2");
+    int test_result1_2 = (0 >= temp) ? 0 : temp;
+    LOG_TRACE("calc test result 1.3");
+    int casted = (int)frames_used;
+    int test_result1_2 = (0 >= casted) ? 0 : casted;
     LOG_TRACE("calc test result 2");
     int test_result2 = soundio_int_max(0, (int)frames_used);
     LOG_TRACE("test_result: %i", test_result2);
