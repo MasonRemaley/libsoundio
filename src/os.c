@@ -202,6 +202,7 @@ int soundio_os_thread_create(
 
 #if defined(SOUNDIO_OS_WINDOWS)
     thread->handle = CreateThread(NULL, 0, run_win32_thread, thread, 0, &thread->id);
+    SetThreadDescription(thread->handle, L"libsoundio");
     if (!thread->handle) {
         soundio_os_thread_destroy(thread);
         return SoundIoErrorSystemResources;
