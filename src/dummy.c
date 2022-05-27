@@ -219,7 +219,7 @@ static int outstream_start_dummy(struct SoundIoPrivate *si, struct SoundIoOutStr
     SOUNDIO_ATOMIC_FLAG_TEST_AND_SET(osd->abort_flag);
     int err;
     if ((err = soundio_os_thread_create(playback_thread_run, os,
-                    soundio->emit_rtprio_warning, &osd->thread)))
+                    soundio->emit_rtprio_warning, soundio->thread_harness, &osd->thread)))
     {
         return err;
     }
@@ -334,7 +334,7 @@ static int instream_start_dummy(struct SoundIoPrivate *si, struct SoundIoInStrea
     SOUNDIO_ATOMIC_FLAG_TEST_AND_SET(isd->abort_flag);
     int err;
     if ((err = soundio_os_thread_create(capture_thread_run, is,
-                    soundio->emit_rtprio_warning, &isd->thread)))
+                    soundio->emit_rtprio_warning, soundio->thread_harness, &isd->thread)))
     {
         return err;
     }

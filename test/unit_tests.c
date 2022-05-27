@@ -149,10 +149,10 @@ static void test_ring_buffer_threaded(void) {
     SOUNDIO_ATOMIC_STORE(rb_done, false);
 
     struct SoundIoOsThread *reader_thread;
-    ok_or_panic(soundio_os_thread_create(reader_thread_run, NULL, NULL, &reader_thread));
+    ok_or_panic(soundio_os_thread_create(reader_thread_run, NULL, NULL, NULL, &reader_thread));
 
     struct SoundIoOsThread *writer_thread;
-    ok_or_panic(soundio_os_thread_create(writer_thread_run, NULL, NULL, &writer_thread));
+    ok_or_panic(soundio_os_thread_create(writer_thread_run, NULL, NULL, NULL, &writer_thread));
 
     while (SOUNDIO_ATOMIC_LOAD(rb_read_it) < 100000 || SOUNDIO_ATOMIC_LOAD(rb_write_it) < 100000) {}
     SOUNDIO_ATOMIC_STORE(rb_done, true);

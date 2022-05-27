@@ -1439,7 +1439,7 @@ static int outstream_start_alsa(struct SoundIoPrivate *si, struct SoundIoOutStre
 
     int err;
     SOUNDIO_ATOMIC_FLAG_TEST_AND_SET(osa->thread_exit_flag);
-    if ((err = soundio_os_thread_create(outstream_thread_run, os, soundio->emit_rtprio_warning, &osa->thread)))
+    if ((err = soundio_os_thread_create(outstream_thread_run, os, soundio->emit_rtprio_warning, soundio->thread_harness, &osa->thread)))
         return err;
 
     return 0;
@@ -1741,7 +1741,7 @@ static int instream_start_alsa(struct SoundIoPrivate *si, struct SoundIoInStream
 
     SOUNDIO_ATOMIC_FLAG_TEST_AND_SET(isa->thread_exit_flag);
     int err;
-    if ((err = soundio_os_thread_create(instream_thread_run, is, soundio->emit_rtprio_warning, &isa->thread))) {
+    if ((err = soundio_os_thread_create(instream_thread_run, is, soundio->emit_rtprio_warning, soundio->thread_harness, &isa->thread))) {
         instream_destroy_alsa(si, is);
         return err;
     }
@@ -1926,7 +1926,7 @@ int soundio_alsa_init(struct SoundIoPrivate *si) {
 
     wakeup_device_poll(sia);
 
-    if ((err = soundio_os_thread_create(device_thread_run, si, NULL, &sia->thread))) {
+    if ((err = soundio_os_thread_create(device_thread_run, si, NULL, soundio->pub.thread_harness, &sia->thread))) {
         destroy_alsa(si);
         return err;
     }

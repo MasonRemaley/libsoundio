@@ -1454,7 +1454,7 @@ int soundio_coreaudio_init(struct SoundIoPrivate *si) {
         return SoundIoErrorSystemResources;
     }
 
-    if ((err = soundio_os_thread_create(device_thread_run, si, NULL, &sica->thread))) {
+    if ((err = soundio_os_thread_create(device_thread_run, si, NULL, si->pub.thread_harness, &sica->thread))) {
         destroy_ca(si);
         return err;
     }

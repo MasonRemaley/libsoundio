@@ -1595,7 +1595,7 @@ static int outstream_open_wasapi(struct SoundIoPrivate *si, struct SoundIoOutStr
     SOUNDIO_ATOMIC_FLAG_TEST_AND_SET(osw->thread_exit_flag);
     int err;
     if ((err = soundio_os_thread_create(outstream_thread_run, os,
-                    soundio->emit_rtprio_warning, &osw->thread)))
+                    soundio->emit_rtprio_warning, soundio->thread_harness, &osw->thread)))
     {
         outstream_destroy_wasapi(si, os);
         return err;
@@ -2033,7 +2033,7 @@ static int instream_open_wasapi(struct SoundIoPrivate *si, struct SoundIoInStrea
     SOUNDIO_ATOMIC_FLAG_TEST_AND_SET(isw->thread_exit_flag);
     int err;
     if ((err = soundio_os_thread_create(instream_thread_run, is,
-                    soundio->emit_rtprio_warning, &isw->thread)))
+                    soundio->emit_rtprio_warning, soundio->thread_harness, &isw->thread)))
     {
         instream_destroy_wasapi(si, is);
         return err;
@@ -2285,7 +2285,7 @@ int soundio_wasapi_init(struct SoundIoPrivate *si) {
     siw->device_events.lpVtbl = &soundio_MMNotificationClient;
     siw->device_events_refs = 1;
 
-    if ((err = soundio_os_thread_create(device_thread_run, si, NULL, &siw->thread))) {
+    if ((err = soundio_os_thread_create(device_thread_run, si, NULL, si->pub.thread_harness, &siw->thread))) {
         destroy_wasapi(si);
         return err;
     }

@@ -89,6 +89,7 @@ struct SoundIoOsThread {
     pthread_t id;
     bool running;
 #endif
+    void (*harness)(void (*run)(void *arg), void *arg);
     void *arg;
     void (*run)(void *arg);
 };
@@ -163,12 +164,20 @@ double soundio_os_get_time(void) {
 #endif
 }
 
+static void run_thread(struct SoundIoOsThread *thread) {
+    if (thread->harness) {
+        thread->harness(thread->run, thread->arg);
+    } else {
+        thread->run(thread->arg);
+    }
+}
+
 #if defined(SOUNDIO_OS_WINDOWS)
 static DWORD WINAPI run_win32_thread(LPVOID userdata) {
     struct SoundIoOsThread *thread = (struct SoundIoOsThread *)userdata;
     HRESULT err = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
     assert(err == S_OK);
-    thread->run(thread->arg);
+    run_thread(thread);
     CoUninitialize();
     return 0;
 }
@@ -179,7 +188,7 @@ static void assert_no_err(int err) {
 
 static void *run_pthread(void *userdata) {
     struct SoundIoOsThread *thread = (struct SoundIoOsThread *)userdata;
-    thread->run(thread->arg);
+    run_thread(thread);
     return NULL;
 }
 #endif
@@ -187,6 +196,7 @@ static void *run_pthread(void *userdata) {
 int soundio_os_thread_create(
         void (*run)(void *arg), void *arg,
         void (*emit_rtprio_warning)(void),
+        void (*harness)(void (*run)(void *arg), void *arg),
         struct SoundIoOsThread ** out_thread)
 {
     *out_thread = NULL;
@@ -199,6 +209,7 @@ int soundio_os_thread_create(
 
     thread->run = run;
     thread->arg = arg;
+    thread->harness = harness;
 
 #if defined(SOUNDIO_OS_WINDOWS)
     thread->handle = CreateThread(NULL, 0, run_win32_thread, thread, 0, &thread->id);

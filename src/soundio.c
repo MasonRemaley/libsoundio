@@ -199,6 +199,7 @@ struct SoundIo *soundio_create(void) {
     soundio->on_events_signal = do_nothing_cb;
     soundio->app_name = "SoundIo";
     soundio->emit_rtprio_warning = default_emit_rtprio_warning;
+    soundio->thread_harness = NULL;
     soundio->jack_info_callback = default_msg_callback;
     soundio->jack_error_callback = default_msg_callback;
     return soundio;

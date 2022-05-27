@@ -22,6 +22,7 @@ struct SoundIoOsThread;
 int soundio_os_thread_create(
         void (*run)(void *arg), void *arg,
         void (*emit_rtprio_warning)(void),
+        void (*harness)(void (*run)(void *arg), void *arg),
         struct SoundIoOsThread ** out_thread);
 
 void soundio_os_thread_destroy(struct SoundIoOsThread *thread);

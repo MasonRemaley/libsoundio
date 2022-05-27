@@ -371,6 +371,16 @@ struct SoundIo {
     /// To silence the warning, assign this to a function that does nothing.
     void (*emit_rtprio_warning)(void);
 
+    /// Optional: Thread harness.
+    /// If supplied, all threads spawned by libsoundio call this callback when they
+    /// want to begin work. This can be used to do application thread setup, like
+    /// installing crash handlers. The callback must eventually call its argument
+    /// `run` the argument `userdata`.
+    ///
+    /// Note that some backends, e.g. coreaudio, soundio does not have control over
+    /// starting of the audio callback thread.
+    void (*thread_harness)(void (*run)(void *userdata), void *userdata);
+
     /// Optional: JACK info callback.
     /// By default, libsoundio sets this to an empty function in order to
     /// silence stdio messages from JACK. You may override the behavior by
