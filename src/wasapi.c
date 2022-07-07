@@ -30,6 +30,9 @@
 #define E_NOTFOUND 0x80070490
 #endif //E_NOTFOUND
 
+#define LOG_INFO(message) rust_log(__FILE__, __LINE__, message, VERBOSITY_INFO)
+extern const int VERBOSITY_INFO;
+
 // And some GUID are never implemented (Ignoring the INITGUID define)
 static const CLSID CLSID_MMDeviceEnumerator = {
     0xbcde0395, 0xe52f, 0x467c, {0x8e, 0x3d, 0xc4, 0x57, 0x92, 0x91, 0x69, 0x2e}
@@ -546,6 +549,7 @@ static int detect_valid_layouts(struct RefreshDevices *rd, WAVEFORMATEXTENSIBLE 
             continue;
         } else {
             *wave_format = orig_wave_format;
+            LOG_INFO("IAudioClient_IsFormatSupported failed");
             return SoundIoErrorOpeningDevice;
         }
     }
@@ -585,6 +589,7 @@ static int detect_valid_formats(struct RefreshDevices *rd, WAVEFORMATEXTENSIBLE 
             continue;
         } else {
             *wave_format = orig_wave_format;
+            LOG_INFO("IAudioClient_IsFormatSupported failed");
             return SoundIoErrorOpeningDevice;
         }
     }
@@ -629,6 +634,7 @@ static int do_sample_rate_test(struct RefreshDevices *rd, struct SoundIoDevicePr
             *current_min = -1;
         }
     } else {
+        LOG_INFO("IAudioClient_IsFormatSupported failed");
         return SoundIoErrorOpeningDevice;
     }
 
@@ -690,6 +696,7 @@ static int refresh_devices(struct SoundIoPrivate *si) {
             if(hr == E_OUTOFMEMORY) {
                 return SoundIoErrorNoMem;
             }
+            LOG_INFO("IMMDeviceEnumerator_GetDefaultAudioEndpoint failed");
             return SoundIoErrorOpeningDevice;
         }
     }
@@ -719,6 +726,7 @@ static int refresh_devices(struct SoundIoPrivate *si) {
             if(hr == E_OUTOFMEMORY) {
                 return SoundIoErrorNoMem;
             }
+            LOG_INFO("IMMDeviceEnumerator_GetDefaultAudioEndpoint");
             return SoundIoErrorOpeningDevice;
         }
     }
@@ -732,6 +740,7 @@ static int refresh_devices(struct SoundIoPrivate *si) {
             if(hr == E_OUTOFMEMORY) {
                 return SoundIoErrorNoMem;
             }
+            LOG_INFO("IMMDevice_GetId");
             return SoundIoErrorOpeningDevice;
         }
         if ((err = from_lpwstr(rd.lpwstr, &rd.default_capture_id, &rd.default_capture_id_len))) {
@@ -748,6 +757,7 @@ static int refresh_devices(struct SoundIoPrivate *si) {
         if(hr == E_OUTOFMEMORY) {
             return SoundIoErrorNoMem;
         }
+        LOG_INFO("IMMDeviceEnumerator_EnumAudioEndpoints");
         return SoundIoErrorOpeningDevice;
     }
 
@@ -756,6 +766,7 @@ static int refresh_devices(struct SoundIoPrivate *si) {
         // In theory this shouldn't happen since the only documented failure case is that
         // rd.collection is NULL, but then EnumAudioEndpoints should have failed.
         deinit_refresh_devices(&rd);
+        LOG_INFO("IMMDeviceCollection_GetCount");
         return SoundIoErrorOpeningDevice;
     }
 
@@ -836,6 +847,7 @@ static int refresh_devices(struct SoundIoPrivate *si) {
             rd.endpoint = NULL;
         }
         if (FAILED(hr = IMMDevice_QueryInterface(rd.mm_device, IID_IMMENDPOINT, (void**)&rd.endpoint))) {
+            LOG_INFO("IMMDevice_QueryInterface failed");
             rd.device_shared->probe_error = SoundIoErrorOpeningDevice;
             rd.device_raw->probe_error = SoundIoErrorOpeningDevice;
             rd.device_shared = NULL;
@@ -845,6 +857,7 @@ static int refresh_devices(struct SoundIoPrivate *si) {
 
         EDataFlow data_flow;
         if (FAILED(hr = IMMEndpoint_GetDataFlow(rd.endpoint, &data_flow))) {
+            LOG_INFO("IMMEndpoint_GetDataFlow failed");
             rd.device_shared->probe_error = SoundIoErrorOpeningDevice;
             rd.device_raw->probe_error = SoundIoErrorOpeningDevice;
             rd.device_shared = NULL;
@@ -889,6 +902,7 @@ static int refresh_devices(struct SoundIoPrivate *si) {
         if (FAILED(hr = IMMDevice_Activate(rd.mm_device, IID_IAUDIOCLIENT,
                         CLSCTX_ALL, NULL, (void**)&rd.audio_client)))
         {
+            LOG_INFO("IMMDevice_Activate failed");
             rd.device_shared->probe_error = SoundIoErrorOpeningDevice;
             rd.device_raw->probe_error = SoundIoErrorOpeningDevice;
             rd.device_shared = NULL;
@@ -901,6 +915,7 @@ static int refresh_devices(struct SoundIoPrivate *si) {
         if (FAILED(hr = IAudioClient_GetDevicePeriod(rd.audio_client,
                         &default_device_period, &min_device_period)))
         {
+            LOG_INFO("IAudioClient_GetDevicePeriod failed");
             rd.device_shared->probe_error = SoundIoErrorOpeningDevice;
             rd.device_raw->probe_error = SoundIoErrorOpeningDevice;
             rd.device_shared = NULL;
@@ -918,6 +933,7 @@ static int refresh_devices(struct SoundIoPrivate *si) {
             rd.prop_store = NULL;
         }
         if (FAILED(hr = IMMDevice_OpenPropertyStore(rd.mm_device, STGM_READ, &rd.prop_store))) {
+            LOG_INFO("IMMDevice_OpenPropertyStore failed");
             rd.device_shared->probe_error = SoundIoErrorOpeningDevice;
             rd.device_raw->probe_error = SoundIoErrorOpeningDevice;
             rd.device_shared = NULL;
@@ -934,6 +950,7 @@ static int refresh_devices(struct SoundIoPrivate *si) {
         if (FAILED(hr = IPropertyStore_GetValue(rd.prop_store,
                         PKEY_DEVICE_FRIENDLYNAME, &rd.prop_variant_value)))
         {
+            LOG_INFO("IPropertyStore_GetValue failed");
             rd.device_shared->probe_error = SoundIoErrorOpeningDevice;
             rd.device_raw->probe_error = SoundIoErrorOpeningDevice;
             rd.device_shared = NULL;
@@ -941,6 +958,7 @@ static int refresh_devices(struct SoundIoPrivate *si) {
             continue;
         }
         if (!rd.prop_variant_value.pwszVal) {
+            LOG_INFO("!rd.prop_variant_value.pwszVal");
             rd.device_shared->probe_error = SoundIoErrorOpeningDevice;
             rd.device_raw->probe_error = SoundIoErrorOpeningDevice;
             rd.device_shared = NULL;
@@ -974,6 +992,7 @@ static int refresh_devices(struct SoundIoPrivate *si) {
         if (FAILED(hr = IPropertyStore_GetValue(rd.prop_store, PKEY_AUDIOENGINE_DEVICEFORMAT,
                         &rd.prop_variant_value)))
         {
+            LOG_INFO("IPropertyStore_GetValue failed");
             rd.device_shared->probe_error = SoundIoErrorOpeningDevice;
             rd.device_raw->probe_error = SoundIoErrorOpeningDevice;
             rd.device_shared = NULL;
@@ -982,6 +1001,7 @@ static int refresh_devices(struct SoundIoPrivate *si) {
         }
         WAVEFORMATEXTENSIBLE *valid_wave_format = (WAVEFORMATEXTENSIBLE *)rd.prop_variant_value.blob.pBlobData;
         if (valid_wave_format->Format.wFormatTag != WAVE_FORMAT_EXTENSIBLE) {
+            LOG_INFO("valid_wave_format->Format.wFormatTag != WAVE_FORMAT_EXTENSIBLE");
             rd.device_shared->probe_error = SoundIoErrorOpeningDevice;
             rd.device_raw->probe_error = SoundIoErrorOpeningDevice;
             rd.device_shared = NULL;
@@ -1013,10 +1033,12 @@ static int refresh_devices(struct SoundIoPrivate *si) {
         }
         if (FAILED(hr = IAudioClient_GetMixFormat(rd.audio_client, (WAVEFORMATEX**)&rd.wave_format))) {
             // According to MSDN GetMixFormat only applies to shared-mode devices.
+            LOG_INFO("IAudioClient_GetMixFormat failed");
             rd.device_shared->probe_error = SoundIoErrorOpeningDevice;
             rd.device_shared = NULL;
         }
         else if(rd.wave_format && (rd.wave_format->Format.wFormatTag != WAVE_FORMAT_EXTENSIBLE)) {
+            LOG_INFO("rd.wave_format && (rd.wave_format->Format.wFormatTag != WAVE_FORMAT_EXTENSIBLE)");
             rd.device_shared->probe_error = SoundIoErrorOpeningDevice;
             rd.device_shared = NULL;
         }
@@ -1254,6 +1276,7 @@ static int outstream_do_open(struct SoundIoPrivate *si, struct SoundIoOutStreamP
     if (FAILED(hr = IMMDevice_Activate(dw->mm_device, IID_IAUDIOCLIENT,
                     CLSCTX_ALL, NULL, (void**)&osw->audio_client)))
     {
+        LOG_INFO("IMMDevice_Activate failed");
         return SoundIoErrorOpeningDevice;
     }
 
@@ -1274,6 +1297,7 @@ static int outstream_do_open(struct SoundIoPrivate *si, struct SoundIoOutStreamP
     } else {
         WAVEFORMATEXTENSIBLE *mix_format;
         if (FAILED(hr = IAudioClient_GetMixFormat(osw->audio_client, (WAVEFORMATEX **)&mix_format))) {
+            LOG_INFO("IAudioClient_GetMixFormat failed");
             return SoundIoErrorOpeningDevice;
         }
         wave_format.Format.nSamplesPerSec = (DWORD)outstream->sample_rate;
@@ -1295,6 +1319,7 @@ static int outstream_do_open(struct SoundIoPrivate *si, struct SoundIoOutStreamP
     {
         if (hr == AUDCLNT_E_BUFFER_SIZE_NOT_ALIGNED) {
             if (FAILED(hr = IAudioClient_GetBufferSize(osw->audio_client, &osw->buffer_frame_count))) {
+                LOG_INFO("IAudioClient_GetBufferSize failed");
                 return SoundIoErrorOpeningDevice;
             }
             IUnknown_Release(osw->audio_client);
@@ -1302,11 +1327,13 @@ static int outstream_do_open(struct SoundIoPrivate *si, struct SoundIoOutStreamP
             if (FAILED(hr = IMMDevice_Activate(dw->mm_device, IID_IAUDIOCLIENT,
                             CLSCTX_ALL, NULL, (void**)&osw->audio_client)))
             {
+                LOG_INFO("IMMDevice_Activate failed");
                 return SoundIoErrorOpeningDevice;
             }
             if (!osw->is_raw) {
                 WAVEFORMATEXTENSIBLE *mix_format;
                 if (FAILED(hr = IAudioClient_GetMixFormat(osw->audio_client, (WAVEFORMATEX **)&mix_format))) {
+                    LOG_INFO("IAudioClient_GetMixFormat failed");
                     return SoundIoErrorOpeningDevice;
                 }
                 wave_format.Format.nSamplesPerSec = (DWORD)outstream->sample_rate;
@@ -1331,6 +1358,7 @@ static int outstream_do_open(struct SoundIoPrivate *si, struct SoundIoOutStreamP
                 } else if (hr == E_OUTOFMEMORY) {
                     return SoundIoErrorNoMem;
                 } else {
+                    LOG_INFO("IAudioClient_Initialize #2 failed");
                     return SoundIoErrorOpeningDevice;
                 }
             }
@@ -1339,11 +1367,13 @@ static int outstream_do_open(struct SoundIoPrivate *si, struct SoundIoOutStreamP
         } else if (hr == E_OUTOFMEMORY) {
             return SoundIoErrorNoMem;
         } else {
+            LOG_INFO("IAudioClient_Initialize #1 failed");
             return SoundIoErrorOpeningDevice;
         }
     }
     REFERENCE_TIME max_latency_ref_time;
     if (FAILED(hr = IAudioClient_GetStreamLatency(osw->audio_client, &max_latency_ref_time))) {
+        LOG_INFO("IAudioClient_GetStreamLatency failed");
         return SoundIoErrorOpeningDevice;
     }
     double max_latency_sec = from_reference_time(max_latency_ref_time);
@@ -1351,11 +1381,13 @@ static int outstream_do_open(struct SoundIoPrivate *si, struct SoundIoOutStreamP
 
 
     if (FAILED(hr = IAudioClient_GetBufferSize(osw->audio_client, &osw->buffer_frame_count))) {
+        LOG_INFO("IAudioClient_GetBufferSize failed");
         return SoundIoErrorOpeningDevice;
     }
     outstream->software_latency = osw->buffer_frame_count / (double)outstream->sample_rate;
 
     if (FAILED(hr = IAudioClient_SetEventHandle(osw->audio_client, osw->h_event))) {
+        LOG_INFO("IAudioClient_SetEventHandle failed");
         return SoundIoErrorOpeningDevice;
     }
 
@@ -1363,6 +1395,7 @@ static int outstream_do_open(struct SoundIoPrivate *si, struct SoundIoOutStreamP
         if (FAILED(hr = IAudioClient_GetService(osw->audio_client, IID_IAUDIOSESSIONCONTROL,
                         (void **)&osw->audio_session_control)))
         {
+            LOG_INFO("IAudioClient_GetService failed");
             return SoundIoErrorOpeningDevice;
         }
 
@@ -1373,6 +1406,7 @@ static int outstream_do_open(struct SoundIoPrivate *si, struct SoundIoOutStreamP
         if (FAILED(hr = IAudioSessionControl_SetDisplayName(osw->audio_session_control,
                         osw->stream_name, NULL)))
         {
+            LOG_INFO("IAudioSessionControl_SetDisplayName failed");
             return SoundIoErrorOpeningDevice;
         }
     }
@@ -1380,17 +1414,20 @@ static int outstream_do_open(struct SoundIoPrivate *si, struct SoundIoOutStreamP
     if (FAILED(hr = IAudioClient_GetService(osw->audio_client, IID_IAUDIORENDERCLIENT,
                     (void **)&osw->audio_render_client)))
     {
+        LOG_INFO("IAudioClient_GetService(.., IID_IAUDIORENDERCLIENT, ..) failed");
         return SoundIoErrorOpeningDevice;
     }
 
     if (FAILED(hr = IAudioClient_GetService(osw->audio_client, IID_ISIMPLEAUDIOVOLUME,
                     (void **)&osw->audio_volume_control)))
     {
+        LOG_INFO("IAudioClient_GetService(.., IID_ISIMPLEAUDIOVOLUME, ..) failed");
         return SoundIoErrorOpeningDevice;
     }
 
     if (FAILED(hr = osw->audio_volume_control->lpVtbl->GetMasterVolume(osw->audio_volume_control, &outstream->volume)))
     {
+        LOG_INFO("...->GetMasterVolume failed");
         return SoundIoErrorOpeningDevice;
     }
 
@@ -1588,6 +1625,7 @@ static int outstream_open_wasapi(struct SoundIoPrivate *si, struct SoundIoOutStr
 
     osw->h_event = CreateEvent(NULL, FALSE, FALSE, NULL);
     if (!osw->h_event) {
+        LOG_INFO("CreateEvent failed");
         outstream_destroy_wasapi(si, os);
         return SoundIoErrorOpeningDevice;
     }
@@ -1768,6 +1806,7 @@ static int instream_do_open(struct SoundIoPrivate *si, struct SoundIoInStreamPri
     if (FAILED(hr = IMMDevice_Activate(dw->mm_device, IID_IAUDIOCLIENT,
                     CLSCTX_ALL, NULL, (void**)&isw->audio_client)))
     {
+        LOG_INFO("IMMDevice_Activate failed");
         return SoundIoErrorOpeningDevice;
     }
 
@@ -1787,6 +1826,7 @@ static int instream_do_open(struct SoundIoPrivate *si, struct SoundIoInStreamPri
     } else {
         WAVEFORMATEXTENSIBLE *mix_format;
         if (FAILED(hr = IAudioClient_GetMixFormat(isw->audio_client, (WAVEFORMATEX **)&mix_format))) {
+            LOG_INFO("IAudioClient_GetMixFormat failed");
             return SoundIoErrorOpeningDevice;
         }
         wave_format.Format.nSamplesPerSec = mix_format->Format.nSamplesPerSec;
@@ -1809,6 +1849,7 @@ static int instream_do_open(struct SoundIoPrivate *si, struct SoundIoInStreamPri
     {
         if (hr == AUDCLNT_E_BUFFER_SIZE_NOT_ALIGNED) {
             if (FAILED(hr = IAudioClient_GetBufferSize(isw->audio_client, &isw->buffer_frame_count))) {
+                LOG_INFO("IAudioClient_GetBufferSize failed");
                 return SoundIoErrorOpeningDevice;
             }
             IUnknown_Release(isw->audio_client);
@@ -1816,11 +1857,13 @@ static int instream_do_open(struct SoundIoPrivate *si, struct SoundIoInStreamPri
             if (FAILED(hr = IMMDevice_Activate(dw->mm_device, IID_IAUDIOCLIENT,
                             CLSCTX_ALL, NULL, (void**)&isw->audio_client)))
             {
+                LOG_INFO("IMMDevice_Activate failed");
                 return SoundIoErrorOpeningDevice;
             }
             if (!isw->is_raw) {
                 WAVEFORMATEXTENSIBLE *mix_format;
                 if (FAILED(hr = IAudioClient_GetMixFormat(isw->audio_client, (WAVEFORMATEX **)&mix_format))) {
+                    LOG_INFO("IAudioClient_GetMixFormat failed");
                     return SoundIoErrorOpeningDevice;
                 }
                 wave_format.Format.nSamplesPerSec = mix_format->Format.nSamplesPerSec;
@@ -1843,6 +1886,7 @@ static int instream_do_open(struct SoundIoPrivate *si, struct SoundIoInStreamPri
                 } else if (hr == E_OUTOFMEMORY) {
                     return SoundIoErrorNoMem;
                 } else {
+                    LOG_INFO("IAudioClient_Initialize failed");
                     return SoundIoErrorOpeningDevice;
                 }
             }
@@ -1851,10 +1895,12 @@ static int instream_do_open(struct SoundIoPrivate *si, struct SoundIoInStreamPri
         } else if (hr == E_OUTOFMEMORY) {
             return SoundIoErrorNoMem;
         } else {
+            LOG_INFO("IAudioClient_Initialize failed");
             return SoundIoErrorOpeningDevice;
         }
     }
     if (FAILED(hr = IAudioClient_GetBufferSize(isw->audio_client, &isw->buffer_frame_count))) {
+        LOG_INFO("IAudioClient_GetBufferSize failed");
         return SoundIoErrorOpeningDevice;
     }
     if (instream->software_latency == 0.0)
@@ -1866,6 +1912,7 @@ static int instream_do_open(struct SoundIoPrivate *si, struct SoundIoInStreamPri
 
     if (isw->is_raw) {
         if (FAILED(hr = IAudioClient_SetEventHandle(isw->audio_client, isw->h_event))) {
+            LOG_INFO("IAudioClient_SetEventHandle failed");
             return SoundIoErrorOpeningDevice;
         }
     }
@@ -1874,6 +1921,7 @@ static int instream_do_open(struct SoundIoPrivate *si, struct SoundIoInStreamPri
         if (FAILED(hr = IAudioClient_GetService(isw->audio_client, IID_IAUDIOSESSIONCONTROL,
                         (void **)&isw->audio_session_control)))
         {
+            LOG_INFO("IAudioClient_GetService failed");
             return SoundIoErrorOpeningDevice;
         }
 
@@ -1884,6 +1932,7 @@ static int instream_do_open(struct SoundIoPrivate *si, struct SoundIoInStreamPri
         if (FAILED(hr = IAudioSessionControl_SetDisplayName(isw->audio_session_control,
                         isw->stream_name, NULL)))
         {
+            LOG_INFO("IAudioSessionControl_SetDisplayName failed");
             return SoundIoErrorOpeningDevice;
         }
     }
@@ -1891,6 +1940,7 @@ static int instream_do_open(struct SoundIoPrivate *si, struct SoundIoInStreamPri
     if (FAILED(hr = IAudioClient_GetService(isw->audio_client, IID_IAUDIOCAPTURECLIENT,
                     (void **)&isw->audio_capture_client)))
     {
+        LOG_INFO("IAudioClient_GetService failed");
         return SoundIoErrorOpeningDevice;
     }
 
@@ -2026,6 +2076,7 @@ static int instream_open_wasapi(struct SoundIoPrivate *si, struct SoundIoInStrea
         isw->h_event = CreateEvent(NULL, FALSE, FALSE, NULL);
         if (!isw->h_event) {
             instream_destroy_wasapi(si, is);
+            LOG_INFO("CreateEvent failed");
             return SoundIoErrorOpeningDevice;
         }
     }
