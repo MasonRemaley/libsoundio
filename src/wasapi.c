@@ -30,6 +30,7 @@
 #define E_NOTFOUND 0x80070490
 #endif //E_NOTFOUND
 
+void rust_log(const char* file, uint32_t line, const char* message, int verbosity);
 #define LOG_INFO(message) rust_log(__FILE__, __LINE__, message, VERBOSITY_INFO)
 extern const int VERBOSITY_INFO;
 
